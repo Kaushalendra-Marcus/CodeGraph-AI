@@ -1117,7 +1117,7 @@ function selectNode(node) {
   if (importing.length) {
     html+=\`<div class="detail-label">Imports (\${importing.length})</div>\`;
     html+=importing.slice(0,12).map(n=>
-      \`<span class="detail-chip" onclick="selectNode(nodes.find(x=>x.id==='\${n.id}'));render()" title="\${n.path}">\${n.label}</span>\`
+      \`<span class="detail-chip" data-nid="\${escAttr(n.id)}" title="\${escAttr(n.path)}">\${escHtml(n.label)}</span>\`
     ).join('');
     if(importing.length>12) html+=\`<span style="font-size:10px;color:var(--vscode-descriptionForeground)"> +\${importing.length-12} more</span>\`;
   }
@@ -1125,7 +1125,7 @@ function selectNode(node) {
   if (importedBy.length) {
     html+=\`<div class="detail-label">Used By (\${importedBy.length})</div>\`;
     html+=importedBy.slice(0,12).map(n=>
-      \`<span class="detail-chip" onclick="selectNode(nodes.find(x=>x.id==='\${n.id}'));render()" title="\${n.path}">\${n.label}</span>\`
+      \`<span class="detail-chip" data-nid="\${escAttr(n.id)}" title="\${escAttr(n.path)}">\${escHtml(n.label)}</span>\`
     ).join('');
     if(importedBy.length>12) html+=\`<span style="font-size:10px;color:var(--vscode-descriptionForeground)"> +\${importedBy.length-12} more</span>\`;
   }
@@ -1135,9 +1135,21 @@ function selectNode(node) {
     html+=node.exports.map(e=>\`<span class="detail-chip" style="cursor:default">\${escHtml(e)}</span>\`).join('');
   }
 
-  html+=\`<button class="btn btn-secondary open-file-btn" onclick="openFileHandler('\${JSON.stringify(node.path).slice(1,-1)}')"><span class="btn-icon" data-icon="open-file.svg"></span> Open File</button>\`;
+  html+=\`<button class="btn btn-secondary open-file-btn" data-fpath="\${escAttr(node.path)}"><span class="btn-icon" data-icon="open-file.svg"></span> Open File</button>\`;
 
-  document.getElementById('node-detail-body').innerHTML=html;
+  const detailBody=document.getElementById('node-detail-body');
+  detailBody.innerHTML=html;
+  // Event delegation: chips navigate to their linked node
+  detailBody.querySelectorAll('.detail-chip[data-nid]').forEach(function(el){
+    el.addEventListener('click',function(){
+      const t=nodes.find(function(x){return x.id===el.dataset.nid;});
+      if(t){selectNode(t);render();}
+    });
+  });
+  // Open-file button uses stored data attribute to avoid path/quote injection
+  const openBtn=detailBody.querySelector('.open-file-btn');
+  if(openBtn) openBtn.addEventListener('click',function(){openFileHandler(openBtn.dataset.fpath);});
+  hydrateIcons();
   render();
 }
 
