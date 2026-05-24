@@ -174,6 +174,13 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
     const latest = records[0];
     this.currentGraph = latest.graph;
     this.currentSummary = latest.summary;
+
+    // Initialize QA agent with summary context so Q&A works immediately after restart,
+    // even before the user re-scans the workspace.
+    if (this.provider) {
+      const stubInfo = { name: latest.repoName, rootPath: "", files: [], isLocal: true as const };
+      this.qaAgent = new QAAgent(this.provider, stubInfo, latest.graph, latest.summary);
+    }
   }
 
   private recordMeta(r: AnalysisRecord) {
@@ -271,12 +278,16 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
       day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
     })}`;
 
+    // Slim the stored graph: edges can be very large and workspaceState has a ~2 MB soft limit.
+    // We cap edges so history serialization stays well within budget.
+    const slimGraph = { nodes: graph.nodes, edges: graph.edges.slice(0, 500) };
+
     const record: AnalysisRecord = {
       id: `${now}`,
       label,
       timestamp: now,
       repoName: wsInfo.name,
-      graph,
+      graph: slimGraph,
       summary,
       fileSummaries,
     };
@@ -329,8 +340,6 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
       });
       return;
     }
-
-    this.post({ type: "thinking", payload: {} });
 
     try {
       const answer = await this.qaAgent.ask(payload.question);

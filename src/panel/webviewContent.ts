@@ -554,7 +554,7 @@ input[type=password]{font-family:monospace;letter-spacing:0.05em}
         <div class="model-row">
         <select id="model-anthropic" onchange="toggleCustomModel('anthropic')">
           <option value="claude-haiku-4-5-20251001">claude-haiku (fastest)</option>
-          <option value="claude-sonnet-4-5">claude-sonnet (best)</option>
+          <option value="claude-sonnet-4-6">claude-sonnet (best)</option>
           <option value="__custom__">Other</option>
         </select>
         <input id="custom-model-anthropic" type="text" placeholder="Type custom model" style="display:none">
@@ -615,6 +615,13 @@ function hydrateIcons() {
     node.innerHTML = '';
     node.appendChild(img);
   });
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+function escAttr(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
 }
 
 try {
@@ -1093,7 +1100,7 @@ function selectNode(node) {
   const importing = edges.filter(e=>e.source===node.id).map(e=>nodeMap.get(e.target)).filter(Boolean);
   const importedBy = edges.filter(e=>e.target===node.id).map(e=>nodeMap.get(e.source)).filter(Boolean);
 
-  let html=\`<div class="detail-file-path">\${node.path}</div>\`;
+  let html=\`<div class="detail-file-path">\${escHtml(node.path)}</div>\`;
   html+=\`<div style="display:flex;gap:10px;margin-bottom:8px;font-size:11px;color:var(--vscode-descriptionForeground)">
     <span><span class="inline-icon" data-icon="imports.svg"></span> imports <b>\${importing.length}</b></span>
     <span><span class="inline-icon" data-icon="used-by.svg"></span> used by <b>\${importedBy.length}</b></span>
@@ -1103,8 +1110,8 @@ function selectNode(node) {
   // Summary if available
   if (fileSummaryMap[node.path]) {
     const s=fileSummaryMap[node.path];
-    html+=\`<div class="detail-label">Purpose</div><div style="font-size:11px;line-height:1.6;color:var(--vscode-editor-foreground)">\${s.purpose}</div>\`;
-    if(s.exports) html+=\`<div class="detail-label">Exports</div><div style="font-size:10.5px;color:var(--vscode-descriptionForeground)">\${s.exports}</div>\`;
+    html+=\`<div class="detail-label">Purpose</div><div style="font-size:11px;line-height:1.6;color:var(--vscode-editor-foreground)">\${escHtml(s.purpose)}</div>\`;
+    if(s.exports) html+=\`<div class="detail-label">Exports</div><div style="font-size:10.5px;color:var(--vscode-descriptionForeground)">\${escHtml(s.exports)}</div>\`;
   }
 
   if (importing.length) {
@@ -1125,7 +1132,7 @@ function selectNode(node) {
 
   if (node.exports?.length) {
     html+=\`<div class="detail-label">Exports</div>\`;
-    html+=node.exports.map(e=>\`<span class="detail-chip" style="cursor:default">\${e}</span>\`).join('');
+    html+=node.exports.map(e=>\`<span class="detail-chip" style="cursor:default">\${escHtml(e)}</span>\`).join('');
   }
 
   html+=\`<button class="btn btn-secondary open-file-btn" onclick="openFileHandler('\${JSON.stringify(node.path).slice(1,-1)}')"><span class="btn-icon" data-icon="open-file.svg"></span> Open File</button>\`;

@@ -95,27 +95,6 @@ function normalizePath(raw: string): string {
   return out.join("/");
 }
 
-function expandImportCandidates(base: string): string[] {
-  return [
-    base,
-    `${base}.ts`,
-    `${base}.tsx`,
-    `${base}.js`,
-    `${base}.jsx`,
-    `${base}.vue`,
-    `${base}.svelte`,
-    `${base}.py`,
-    `${base}.go`,
-    `${base}.rs`,
-    `${base}/index.ts`,
-    `${base}/index.tsx`,
-    `${base}/index.js`,
-    `${base}/index.jsx`,
-    `${base}/index.vue`,
-    `${base}/index.svelte`,
-    `${base}/index.py`,
-  ];
-}
 
 function findBySuffix(base: string, allPaths: Set<string>): string | null {
   const normalized = normalizePath(base);

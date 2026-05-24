@@ -149,7 +149,7 @@ async function fetchFileContent(
     if (!res.ok) return null;
     const data = await res.json() as any;
     if (data.encoding === "base64") {
-      return atob(data.content.replace(/\n/g, ""));
+      return Buffer.from(data.content.replace(/\n/g, ""), "base64").toString("utf-8");
     }
     return null;
   } catch {
