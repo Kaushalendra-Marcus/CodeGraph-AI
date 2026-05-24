@@ -1178,23 +1178,28 @@ function showSummary(s, name) {
   document.getElementById('s-modules').innerHTML=(s.keyModules||[]).map(m=>
     \`<div class="card"><div class="card-title">\${escHtml(m.name)}</div><div class="card-body">\${escHtml(m.description)}</div></div>\`
   ).join('');
-  document.getElementById('s-entries').innerHTML=(s.entryPoints||[]).map(p=>
-    \`<div style="padding:2px 0;cursor:pointer;color:#569cd6" onclick="openFileHandler('\${JSON.stringify(p).slice(1,-1)}')">\${p}</div>\`
+  const entryPoints=(s.entryPoints||[]);
+  document.getElementById('s-entries').innerHTML=entryPoints.map(p=>
+    \`<div class="entry-point" style="padding:2px 0;cursor:pointer;color:#569cd6" data-fpath="\${escAttr(p)}">\${escHtml(p)}</div>\`
   ).join('')||'<span style="color:var(--vscode-descriptionForeground)">None detected</span>';
+  document.querySelectorAll('#s-entries .entry-point').forEach(function(el){
+    el.addEventListener('click',function(){openFileHandler(el.dataset.fpath);});
+  });
 }
 
 function showFileSummaries(files) {
   document.getElementById('s-file-count').textContent='('+files.length+')';
-  // Store for node detail panel
   files.forEach(f=>{ fileSummaryMap[f.path]=f; });
   document.getElementById('s-files').innerHTML=files.map(f=>\`
-    <div class="file-card" onclick="openFileHandler('\${JSON.stringify(f.path).slice(1,-1)}')">
-      <div class="file-card-path">\${f.path}</div>
-      <div class="file-card-desc">\${f.purpose}</div>
-      \${f.exports?'<div style="font-size:10px;color:var(--vscode-descriptionForeground);margin-top:3px">Exports: '+f.exports+'</div>':''}
+    <div class="file-card" data-fpath="\${escAttr(f.path)}">
+      <div class="file-card-path">\${escHtml(f.path)}</div>
+      <div class="file-card-desc">\${escHtml(f.purpose)}</div>
+      \${f.exports?'<div style="font-size:10px;color:var(--vscode-descriptionForeground);margin-top:3px">Exports: '+escHtml(f.exports)+'</div>':''}
     </div>
   \`).join('');
-}
+  document.querySelectorAll('#s-files .file-card[data-fpath]').forEach(function(el){
+    el.addEventListener('click',function(){openFileHandler(el.dataset.fpath);});
+  });
 
 /* ══════════════════════════════════════════════════════════
    HISTORY
