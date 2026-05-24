@@ -1174,9 +1174,9 @@ function showSummary(s, name) {
   document.getElementById('s-name').textContent=name;
   document.getElementById('s-overview').textContent=s.overview||'';
   document.getElementById('s-arch').textContent=s.architecture||'';
-  document.getElementById('s-tech').innerHTML=(s.techStack||[]).map(t=>\`<span class="chip">\${t}</span>\`).join('');
+  document.getElementById('s-tech').innerHTML=(s.techStack||[]).map(t=>\`<span class="chip">\${escHtml(t)}</span>\`).join('');
   document.getElementById('s-modules').innerHTML=(s.keyModules||[]).map(m=>
-    \`<div class="card"><div class="card-title">\${m.name}</div><div class="card-body">\${m.description}</div></div>\`
+    \`<div class="card"><div class="card-title">\${escHtml(m.name)}</div><div class="card-body">\${escHtml(m.description)}</div></div>\`
   ).join('');
   document.getElementById('s-entries').innerHTML=(s.entryPoints||[]).map(p=>
     \`<div style="padding:2px 0;cursor:pointer;color:#569cd6" onclick="openFileHandler('\${JSON.stringify(p).slice(1,-1)}')">\${p}</div>\`
