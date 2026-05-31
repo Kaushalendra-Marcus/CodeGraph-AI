@@ -1215,15 +1215,21 @@ function showHistory(records) {
   document.getElementById('history-list').innerHTML = records.map(r=>\`
     <div class="card history-row">
       <div class="history-meta">
-        <div class="card-title">\${r.label}</div>
-        <div class="card-body" style="margin-top:2px">\${r.repoName}</div>
+        <div class="card-title">\${escHtml(r.label)}</div>
+        <div class="card-body" style="margin-top:2px">\${escHtml(r.repoName)}</div>
       </div>
       <div class="history-actions">
-        <button class="btn btn-sm" onclick="loadAnalysisById('\${r.id}')" title="Restore">Restore</button>
-        <button class="btn btn-sm btn-secondary" onclick="deleteAnalysisById('\${r.id}')" title="Delete">✕</button>
+        <button class="btn btn-sm restore-btn" data-rid="\${escAttr(r.id)}" title="Restore">Restore</button>
+        <button class="btn btn-sm btn-secondary delete-btn" data-rid="\${escAttr(r.id)}" title="Delete">✕</button>
       </div>
     </div>
   \`).join('');
+  document.querySelectorAll('#history-list .restore-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){loadAnalysisById(btn.dataset.rid);});
+  });
+  document.querySelectorAll('#history-list .delete-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){deleteAnalysisById(btn.dataset.rid);});
+  });
 }
 function loadAnalysisById(id) {
   if (!vscode) return;
