@@ -210,6 +210,10 @@ function sanitizeMermaid(code: string): string {
   if (!clean.startsWith("flowchart") && !clean.startsWith("graph")) {
     clean = "flowchart TD\n" + clean;
   }
+  // Prepend dark-theme init directive if not already present
+  if (!clean.startsWith("%%")) {
+    clean = "%%{init: {'theme': 'dark', 'themeVariables': {'primaryColor': '#1e3a5f'}}}%%\n" + clean;
+  }
   return clean;
 }
 

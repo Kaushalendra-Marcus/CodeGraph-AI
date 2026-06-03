@@ -316,6 +316,8 @@ input[type=password]{font-family:monospace;letter-spacing:0.05em}
 .ext-cb-label{margin-right:6px;cursor:pointer;font-size:10.5px;white-space:nowrap}
 .depth-row{display:flex;align-items:center;gap:5px}
 .depth-row input[type=range]{width:70px;padding:0;margin:0}
+/* Flow tile hover */
+.flow-preset:hover{background:var(--vscode-list-activeSelectionBackground)!important;color:var(--vscode-list-activeSelectionForeground)!important;opacity:1}
 </style>
 </head>
 <body>
@@ -797,7 +799,7 @@ function initGraph(data) {
   });
 
   edges = data.edges.filter(e => nodeIds.has(e.source) && nodeIds.has(e.target));
-  document.getElementById('graph-stats').textContent = topNodes.length + ' files · ' + edges.length + ' imports';
+  document.getElementById('graph-stats').textContent = topNodes.length + ' files \xb7 ' + edges.length + ' imports';
 
   for (let i=0;i<200;i++) tickForce();
 
@@ -852,10 +854,8 @@ function setupCanvasEvents() {
   };
   canvas.onmouseup = e => {
     const clickDistance = Math.hypot(e.clientX-pointerState.startX, e.clientY-pointerState.startY);
-    const {gx,gy} = screenToGraph(e.offsetX, e.offsetY);
-    const hit = nodes.find(n => Math.hypot(n.x-gx, n.y-gy) < n.r+3);
     if (pointerState.down && !pointerState.moved && pointerState.node && clickDistance < 5) selectNode(pointerState.node);
-    else if (pointerState.down && !pointerState.moved && !pointerState.node && !hit) { selectedNode=null; closeNodeDetail(); }
+    else if (pointerState.down && !pointerState.moved && !pointerState.node) { selectedNode=null; closeNodeDetail(); }
     dragging=false; dragNode=null; pointerState.down=false;
     canvas.classList.remove('grabbing');
     render();
@@ -957,7 +957,7 @@ function render() {
       ctx.font=\`\${isSelected||isConn?600:400} \${fs}px var(--vscode-font-family,'Segoe UI',sans-serif)\`;
       ctx.textAlign='center';
       ctx.fillStyle=isSelected?'#fff':isConn?'rgba(255,255,255,0.9)':'rgba(255,255,255,0.65)';
-      let label=n.label; if(label.length>16) label=label.slice(0,14)+'…';
+      let label=n.label; if(label.length>16) label=label.slice(0,14)+'\u2026';
       ctx.fillText(label,n.x,n.y+n.r+fs+2);
     }
     if (isSelected) {
@@ -1174,7 +1174,7 @@ function applyLayout(positions){
 function updateTokenDisplay(total){ const el=document.getElementById('token-display'); if(el) el.textContent='~'+total.toLocaleString()+' tokens used (estimated)'; }
 
 /* ══════════════════════════════════════════════════════════
-   MESSAGE HANDLER  ← COMPLETE with all backend message types
+   MESSAGE HANDLER  <- COMPLETE with all backend message types
 ══════════════════════════════════════════════════════════ */
 let _summary=null, _repoName='';
 
@@ -1269,7 +1269,7 @@ window.addEventListener('message', e=>{
       showAlert('settings','✗ '+payload.message,'error');
       break;
 
-    /* ── AI TOOLS ── */
+    /* -- AI TOOLS -- */
     case 'aiToolBusy':
       setAIToolBusy(payload.docType, payload.busy); break;
 
@@ -1338,6 +1338,8 @@ window.addEventListener('load', () => {
 
   ['groq','gemini','anthropic','openai'].forEach(name=>toggleCustomModel(name));
 
+  wireFlowPresets();
+
   if(vscode) vscode.postMessage({type:'getSettings'});
 });
 
@@ -1345,70 +1347,288 @@ window.addEventListener('load', () => {
    FLOW DIAGRAMS
 ══════════════════════════════════════════════════════════ */
 let _currentFlowMap = null;
-let _selectedFlowId = null;
+let _selectedDiagram = null;
+
+// -- Mermaid -> SVG renderer (pure JS, no CDN needed) ---------
+// We parse the flowchart AST and render to an inline SVG.
+function renderMermaidToSvg(code) {
+  try {
+    const lines = code.split('\\n').map(l => l.trim()).filter(l => l && !l.startsWith('flowchart') && !l.startsWith('graph') && !l.startsWith('%%'));
+    const nodeMap = {}; // id -> label
+    const edges = [];   // {from, to, label}
+    const nodeRe = /^([A-Za-z0-9_]+)(?:\\[([^\\]]+)\\]|\\{([^}]+)\\}|\\(([^)]+)\\)|\\(\\(([^)]+)\\)\\)|\\[\\[([^\\]]+)\\]\\]|\\[\\(([^)]+)\\)\\])?$/;
+    const edgeRe = /^([A-Za-z0-9_]+)\\s*(-->|--\\s*[^>]*\\s*-->|--\\|([^|]*)\\|-->|--\\|([^|]*)\\|)\\s*([A-Za-z0-9_]+)(.*)$/;
+
+    for (const line of lines) {
+      // edge
+      const em = line.match(/^([A-Za-z0-9_]+)\\s*(?:--\\|([^|]*)\\||-->|--[^>]*-->)\\s*([A-Za-z0-9_]+)/);
+      if (em) {
+        const labelM = line.match(/--\\|([^|]*)\\|/);
+        edges.push({ from: em[1], to: em[3], label: labelM ? labelM[1].trim() : '' });
+        // register nodes without labels if not yet seen
+        if (!nodeMap[em[1]]) nodeMap[em[1]] = em[1];
+        if (!nodeMap[em[3]]) nodeMap[em[3]] = em[3];
+        continue;
+      }
+      // node definition
+      const bracketM = line.match(/^([A-Za-z0-9_]+)\\["?([^"\\]]+)"?\\]/);
+      if (bracketM) { nodeMap[bracketM[1]] = bracketM[2]; continue; }
+      const braceM = line.match(/^([A-Za-z0-9_]+)\\{"?([^"\\}]+)"?\\}/);
+      if (braceM) { nodeMap[braceM[1]] = '\u25c6 ' + braceM[2]; continue; }
+      const parenM = line.match(/^([A-Za-z0-9_]+)\\("?([^"\\)]+)"?\\)/);
+      if (parenM) { nodeMap[parenM[1]] = parenM[2]; continue; }
+    }
+
+    const nodeIds = Object.keys(nodeMap);
+    if (!nodeIds.length) return null;
+
+    // -- Layout: top-down layering --------------------------------
+    const layers = computeLayers(nodeIds, edges);
+    const W = 260, nodeW = 110, nodeH = 32, hGap = 24, vGap = 48;
+    const maxPerRow = Math.max(...layers.map(l => l.length));
+    const svgW = Math.max(W, maxPerRow * (nodeW + hGap) + hGap);
+    const svgH = layers.length * (nodeH + vGap) + vGap;
+
+    // assign coordinates
+    const coords = {};
+    layers.forEach((layer, li) => {
+      const rowW = layer.length * (nodeW + hGap) - hGap;
+      const startX = (svgW - rowW) / 2;
+      layer.forEach((id, ci) => {
+        coords[id] = { x: startX + ci * (nodeW + hGap) + nodeW / 2, y: vGap + li * (nodeH + vGap) + nodeH / 2 };
+      });
+    });
+
+    // -- Build SVG ------------------------------------------------
+    const ACCENT = '#569cd6';
+    const NODE_FILL = 'rgba(86,156,214,0.12)';
+    const NODE_STROKE = '#569cd6';
+    const DIAMOND_FILL = 'rgba(220,220,170,0.12)';
+    const DIAMOND_STROKE = '#dcdcaa';
+    const TEXT_COLOR = 'rgba(255,255,255,0.88)';
+    const EDGE_COLOR = 'rgba(255,255,255,0.28)';
+    const EDGE_ANIM_COLOR = '#569cd6';
+
+    let svgParts = [
+      \`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 \${svgW} \${svgH}" width="\${svgW}" height="\${svgH}" style="max-width:100%;font-family:var(--vscode-font-family,'Segoe UI',sans-serif)">\`,
+      \`<defs>
+        <marker id="arrowhead" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="\${EDGE_COLOR}" />
+        </marker>
+        <marker id="arrowhead-anim" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+          <polygon points="0 0, 8 3, 0 6" fill="\${EDGE_ANIM_COLOR}" />
+        </marker>
+        <style>
+          .flow-edge { stroke: \${EDGE_COLOR}; stroke-width: 1.2; fill: none; marker-end: url(#arrowhead); }
+          .flow-edge-anim { stroke: \${EDGE_ANIM_COLOR}; stroke-width: 1.5; fill: none; marker-end: url(#arrowhead-anim);
+            stroke-dasharray: 6 4; animation: flowDash 1.4s linear infinite; opacity: 0; }
+          .flow-node-rect:hover ~ .flow-edge-anim, .flow-edge:hover { opacity: 1; }
+          @keyframes flowDash { to { stroke-dashoffset: -20; } }
+          .flow-node-rect { transition: filter 0.15s; cursor: default; }
+          .flow-node-rect:hover { filter: brightness(1.35); }
+        </style>
+      </defs>\`
+    ];
+
+    // draw edges first (behind nodes)
+    for (const e of edges) {
+      const a = coords[e.from], b = coords[e.to];
+      if (!a || !b) continue;
+      // straight line with slight curve
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const path = \`M \${a.x} \${a.y + nodeH / 2} C \${a.x} \${my + 10}, \${b.x} \${my - 10}, \${b.x} \${b.y - nodeH / 2}\`;
+      svgParts.push(\`<path class="flow-edge" d="\${path}"/>\`);
+      // animated dashed overlay
+      svgParts.push(\`<path class="flow-edge-anim" d="\${path}"/>\`);
+      if (e.label) {
+        svgParts.push(\`<text x="\${mx}" y="\${my - 3}" text-anchor="middle" font-size="9" fill="rgba(255,255,255,0.55)" font-style="italic">\${escHtml(e.label.slice(0,16))}</text>\`);
+      }
+    }
+
+    // draw nodes
+    for (const id of nodeIds) {
+      const c = coords[id];
+      if (!c) continue;
+      const label = nodeMap[id] || id;
+      const isDiamond = label.startsWith('\u25c6 ');
+      const dispLabel = isDiamond ? label.slice(2) : label;
+      const fill = isDiamond ? DIAMOND_FILL : NODE_FILL;
+      const stroke = isDiamond ? DIAMOND_STROKE : NODE_STROKE;
+      if (isDiamond) {
+        const hw = nodeW / 2, hh = nodeH / 2 + 4;
+        svgParts.push(\`<polygon class="flow-node-rect" points="\${c.x},\${c.y - hh} \${c.x + hw},\${c.y} \${c.x},\${c.y + hh} \${c.x - hw},\${c.y}" fill="\${fill}" stroke="\${stroke}" stroke-width="1.2" rx="3"/>\`);
+      } else {
+        svgParts.push(\`<rect class="flow-node-rect" x="\${c.x - nodeW / 2}" y="\${c.y - nodeH / 2}" width="\${nodeW}" height="\${nodeH}" rx="4" fill="\${fill}" stroke="\${stroke}" stroke-width="1.2"/>\`);
+      }
+      // truncate label
+      const maxChars = 15;
+      const tLabel = dispLabel.length > maxChars ? dispLabel.slice(0, maxChars - 1) + '\u2026' : dispLabel;
+      svgParts.push(\`<text x="\${c.x}" y="\${c.y + 4}" text-anchor="middle" font-size="10" fill="\${TEXT_COLOR}" font-weight="500">\${escHtml(tLabel)}</text>\`);
+    }
+
+    svgParts.push('</svg>');
+    return svgParts.join('\\n');
+  } catch (e) {
+    return null;
+  }
+}
+
+function computeLayers(nodeIds, edges) {
+  // Kahn's algorithm for topological layering
+  const inDeg = {};
+  nodeIds.forEach(id => { inDeg[id] = 0; });
+  edges.forEach(e => { if (inDeg[e.to] !== undefined) inDeg[e.to]++; });
+  const layers = [];
+  let remaining = new Set(nodeIds);
+  while (remaining.size > 0) {
+    const layer = [...remaining].filter(id => inDeg[id] === 0);
+    if (!layer.length) { layers.push([...remaining]); break; } // cycle fallback
+    layers.push(layer);
+    layer.forEach(id => {
+      remaining.delete(id);
+      edges.filter(e => e.from === id).forEach(e => { if (inDeg[e.to] !== undefined) inDeg[e.to]--; });
+    });
+  }
+  return layers;
+}
+
+// -- Show / hide -----------------------------------------------
 
 function showFlowMap(flowMap) {
   _currentFlowMap = flowMap;
-  document.getElementById('flow-empty').style.display='none';
-  document.getElementById('flow-ready').style.display='flex';
+  document.getElementById('flow-empty').style.display = 'none';
+  document.getElementById('flow-ready').style.display = 'flex';
   closeFlowDetail();
+  renderFlowTiles();
+}
+
+function renderFlowTiles() {
+  if (!_currentFlowMap) return;
   const tiles = document.getElementById('flow-tiles');
   tiles.innerHTML = '';
   // Overview tile first
-  if (flowMap.overviewMermaid) {
-    const ovTile = buildFlowTile({ id:'__overview', title:'Overview', description:'How the flows connect to each other', category:'service', mermaidCode: flowMap.overviewMermaid, relatedFiles:[] });
-    tiles.appendChild(ovTile);
+  if (_currentFlowMap.overviewMermaid) {
+    tiles.appendChild(buildFlowTile({
+      id: '__overview', title: 'Overview', category: 'service',
+      description: 'How the flows connect to each other',
+      mermaidCode: _currentFlowMap.overviewMermaid, relatedFiles: []
+    }));
   }
-  (flowMap.subDiagrams||[]).forEach(d => tiles.appendChild(buildFlowTile(d)));
+  (_currentFlowMap.subDiagrams || []).forEach(d => tiles.appendChild(buildFlowTile(d)));
 }
 
+const CAT_COLORS = { auth:'#f48771', api:'#569cd6', data:'#4ec9b0', component:'#c586c0', service:'#dcdcaa', background:'#9cdcfe', custom:'#d7ba7d' };
+
 function buildFlowTile(diagram) {
-  const catColors = { auth:'#f48771', api:'#569cd6', data:'#4ec9b0', component:'#c586c0', service:'#dcdcaa', background:'#9cdcfe', custom:'#d7ba7d' };
-  const color = catColors[diagram.category] || '#9cdcfe';
+  const color = CAT_COLORS[diagram.category] || '#9cdcfe';
   const div = document.createElement('div');
   div.className = 'card';
-  div.style.cursor = 'pointer';
-  div.style.borderLeft = '3px solid ' + color;
+  div.style.cssText = 'cursor:pointer;border-left:3px solid ' + color + ';transition:border-color 0.15s,background 0.15s';
   div.innerHTML =
-    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">' +
-    '<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:'+color+'">' + escHtml(diagram.category) + '</span>' +
+    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:3px">' +
+      '<span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:' + color + '">' + escHtml(diagram.category) + '</span>' +
     '</div>' +
     '<div class="card-title">' + escHtml(diagram.title) + '</div>' +
     '<div class="card-body" style="margin-top:3px">' + escHtml(diagram.description) + '</div>' +
-    (diagram.relatedFiles?.length ? '<div style="margin-top:5px;font-size:9.5px;color:var(--vscode-descriptionForeground)">' + diagram.relatedFiles.slice(0,3).map(f=>'<code>'+escHtml(f)+'</code>').join(' ') + '</div>' : '');
+    (diagram.relatedFiles && diagram.relatedFiles.length
+      ? '<div style="margin-top:5px;font-size:9.5px;color:var(--vscode-descriptionForeground)">' +
+          diagram.relatedFiles.slice(0,3).map(f => '<code style="font-size:9px">' + escHtml(f.split('/').pop()) + '</code>').join(' ') +
+        '</div>' : '') +
+    '<div style="margin-top:6px;font-size:9.5px;color:' + color + ';opacity:0.7">Click to view diagram \u203a</div>';
   div.addEventListener('click', () => openFlowDetail(diagram));
+  div.addEventListener('mouseenter', () => div.style.background = 'var(--vscode-list-hoverBackground)');
+  div.addEventListener('mouseleave', () => div.style.background = '');
   return div;
 }
 
 function openFlowDetail(diagram) {
-  _selectedFlowId = diagram.id;
-  document.getElementById('flow-tiles').style.display = 'none';
+  _selectedDiagram = diagram;
+  const color = CAT_COLORS[diagram.category] || '#9cdcfe';
+
+  // Show detail panel, hide overview
+  document.getElementById('flow-overview').style.display = 'none';
   document.getElementById('flow-detail').style.display = 'flex';
   document.getElementById('flow-detail-title').textContent = diagram.title;
+  document.getElementById('flow-detail-desc').textContent = diagram.description;
   document.getElementById('flow-mermaid-src').textContent = diagram.mermaidCode;
+
+  // Related files
+  const rf = document.getElementById('flow-related-files');
+  rf.innerHTML = diagram.relatedFiles && diagram.relatedFiles.length
+    ? '<b>Related files:</b> ' + diagram.relatedFiles.map(f => '<code>' + escHtml(f) + '</code>').join(', ')
+    : '';
+
+  // Render SVG
+  const container = document.getElementById('flow-svg-container');
+  container.innerHTML = '<div style="font-size:10px;color:var(--vscode-descriptionForeground)">Rendering\u2026</div>';
+  setTimeout(() => {
+    const svg = renderMermaidToSvg(diagram.mermaidCode);
+    if (svg) {
+      container.innerHTML = svg;
+      // animate edges on hover via CSS already in defs; trigger initial fade-in
+      container.style.opacity = '0';
+      container.style.transition = 'opacity 0.3s';
+      requestAnimationFrame(() => { container.style.opacity = '1'; });
+    } else {
+      container.innerHTML =
+        '<div style="text-align:center;padding:12px">' +
+        '<div style="font-size:11px;color:var(--vscode-descriptionForeground);margin-bottom:6px">Visual render unavailable \u2014 Mermaid source below</div>' +
+        '<div style="font-size:10px;color:' + color + '">Expand "View Mermaid source" to copy and paste into mermaid.live</div>' +
+        '</div>';
+    }
+  }, 30);
+
+  // Copy button
+  document.getElementById('flow-copy-btn').onclick = () => {
+    navigator.clipboard?.writeText(diagram.mermaidCode).then(() => {
+      const btn = document.getElementById('flow-copy-btn');
+      btn.textContent = 'Copied!';
+      setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+    });
+  };
 }
 
 function closeFlowDetail() {
-  _selectedFlowId = null;
+  _selectedDiagram = null;
   document.getElementById('flow-detail').style.display = 'none';
-  document.getElementById('flow-tiles').style.display = 'flex';
+  document.getElementById('flow-overview').style.display = 'flex';
+  // Reset SVG container
+  const c = document.getElementById('flow-svg-container');
+  if (c) { c.innerHTML = ''; c.style.opacity = '1'; }
 }
 
 function addCustomFlowTile(diagram) {
-  const tiles = document.getElementById('flow-tiles');
-  if (tiles) tiles.prepend(buildFlowTile(diagram));
-  // Also add to the in-memory map so it persists during the session
-  if (_currentFlowMap) _currentFlowMap.subDiagrams.unshift(diagram);
-  document.getElementById('flow-empty').style.display='none';
-  document.getElementById('flow-ready').style.display='flex';
+  if (_currentFlowMap) {
+    _currentFlowMap.subDiagrams.unshift(diagram);
+  } else {
+    _currentFlowMap = { subDiagrams: [diagram], overviewMermaid: '' };
+  }
+  document.getElementById('flow-empty').style.display = 'none';
+  document.getElementById('flow-ready').style.display = 'flex';
+  renderFlowTiles();
+  // Auto-open the new diagram
+  openFlowDetail(diagram);
 }
 
 function askCustomFlow() {
   const inp = document.getElementById('flow-question');
-  const q = inp?.value?.trim();
+  const q = inp ? inp.value.trim() : '';
   if (!q) return;
   inp.value = '';
   if (vscode) vscode.postMessage({ type: 'generateCustomFlow', payload: { question: q } });
+}
+
+// Wire preset buttons after DOM load (called from INIT block)
+function wireFlowPresets() {
+  document.querySelectorAll('.flow-preset').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const q = btn.getAttribute('data-q');
+      if (q && vscode) vscode.postMessage({ type: 'generateCustomFlow', payload: { question: q } });
+    });
+  });
+  // Enter key on flow input
+  const fi = document.getElementById('flow-question');
+  if (fi) fi.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); askCustomFlow(); } });
 }
 </script>
 </body>
