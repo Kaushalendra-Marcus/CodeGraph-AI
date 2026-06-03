@@ -87,6 +87,12 @@ export class HistoryHandler {
         hasQA: !!this.state.qaAgent,
       },
     });
+
+    // Restore saved node positions
+    const positions = this.context.workspaceState.get<{ id: string; x: number; y: number }[]>("repograph.graphLayout");
+    if (positions?.length) {
+      this.post({ type: "layoutLoaded", payload: { positions } });
+    }
   }
 
   async delete(payload: { id: string }) {

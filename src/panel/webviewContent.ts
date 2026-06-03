@@ -324,6 +324,7 @@ input[type=password]{font-family:monospace;letter-spacing:0.05em}
   <button class="tab active" onclick="showTab('analyze')">Analyze</button>
   <button class="tab" onclick="showTab('graph')">Graph</button>
   <button class="tab" onclick="showTab('summary')">Summary</button>
+  <button class="tab" onclick="showTab('flow')">Flow</button>
   <button class="tab" onclick="showTab('qa')">Q&amp;A</button>
   <button class="tab" onclick="showTab('aitools')">AI Tools</button>
   <button class="tab" onclick="showTab('history')">History</button>
@@ -353,7 +354,7 @@ input[type=password]{font-family:monospace;letter-spacing:0.05em}
       <div class="progress-bar-outer"><div class="progress-bar-inner" id="pbar" style="width:8%"></div></div>
       <div id="progress-msg" style="font-size:11px;color:var(--vscode-descriptionForeground)">Starting...</div>
       <div class="progress-steps" style="margin-top:4px">
-        <span id="ps1">1.Fetch</span><span id="ps2">2.Graph</span><span id="ps3">3.Summary</span><span id="ps4">4.Files</span>
+        <span id="ps1">1.Scan</span><span id="ps2">2.Graph</span><span id="ps3">3.Summary</span><span id="ps4">4.Files</span><span id="ps5">5.Flows</span>
       </div>
     </div>
   </div>
@@ -488,6 +489,59 @@ input[type=password]{font-family:monospace;letter-spacing:0.05em}
         <div class="ai-result-box" id="pr-content"></div>
       </div>
     </div>
+  </div>
+</div>
+
+<!-- FLOW -->
+<div id="tab-flow" class="screen">
+  <div id="flow-empty" class="empty" style="display:flex">
+    <div class="empty-icon" data-icon="graph-empty.svg"></div>
+    <div class="empty-title">Data Flow Diagrams</div>
+    <div class="empty-sub">Analyze a project to see AI-detected flow diagrams for auth, API, data, and more</div>
+  </div>
+  <div id="flow-ready" style="display:none;flex-direction:column;height:100%;min-height:0;flex:1">
+
+    <!-- Overview grid -->
+    <div id="flow-overview" style="display:flex;flex-direction:column;flex:1;min-height:0">
+      <!-- Preset quick buttons -->
+      <div style="padding:7px 8px 5px;border-bottom:1px solid var(--vscode-panel-border);flex-shrink:0">
+        <div style="font-size:9.5px;text-transform:uppercase;letter-spacing:0.08em;font-weight:700;color:var(--vscode-descriptionForeground);margin-bottom:5px">Preset Flows</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:7px">
+          <button class="btn btn-sm btn-secondary flow-preset" data-q="API request lifecycle flow">&#127760; API Request</button>
+          <button class="btn btn-sm btn-secondary flow-preset" data-q="Authentication and authorization flow">&#128274; Auth Flow</button>
+          <button class="btn btn-sm btn-secondary flow-preset" data-q="Component data flow and state management">&#9881; Component Data</button>
+          <button class="btn btn-sm btn-secondary flow-preset" data-q="Database query and data access path">&#128451; DB Query Path</button>
+        </div>
+        <!-- Custom flow input -->
+        <div style="display:flex;gap:5px">
+          <input type="text" id="flow-question" placeholder="Custom flow: e.g. &quot;how does the email queue work&quot;" style="flex:1;font-size:11px;padding:4px 7px">
+          <button class="btn btn-sm" id="flow-ask-btn" onclick="askCustomFlow()">Generate</button>
+        </div>
+      </div>
+      <!-- Tiles -->
+      <div class="scroll" id="flow-tiles" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <!-- Detail / drill-down panel -->
+    <div id="flow-detail" style="display:none;flex-direction:column;flex:1;min-height:0">
+      <div style="display:flex;align-items:center;gap:8px;padding:7px 8px;border-bottom:1px solid var(--vscode-panel-border);flex-shrink:0">
+        <button class="btn btn-sm btn-secondary" onclick="closeFlowDetail()">&#8592; Back</button>
+        <div id="flow-detail-title" style="font-size:12px;font-weight:600;flex:1"></div>
+        <button class="btn btn-sm btn-secondary" id="flow-copy-btn" title="Copy Mermaid source">Copy</button>
+      </div>
+      <div id="flow-detail-desc" style="padding:5px 10px;font-size:11px;color:var(--vscode-descriptionForeground);border-bottom:1px solid var(--vscode-panel-border);flex-shrink:0"></div>
+      <!-- Rendered SVG diagram -->
+      <div id="flow-render-wrap" style="flex:1;overflow:auto;padding:10px;display:flex;flex-direction:column;gap:8px">
+        <div id="flow-svg-container" style="background:var(--vscode-editor-background);border:1px solid var(--vscode-panel-border);border-radius:5px;padding:12px;min-height:120px;display:flex;align-items:center;justify-content:center"></div>
+        <!-- Collapsible Mermaid source -->
+        <details style="margin-top:4px">
+          <summary style="font-size:10px;color:var(--vscode-descriptionForeground);cursor:pointer;user-select:none;padding:3px 0">View Mermaid source</summary>
+          <pre id="flow-mermaid-src" style="margin-top:5px;font-size:10px;font-family:monospace;background:var(--vscode-editor-background);border:1px solid var(--vscode-panel-border);border-radius:4px;padding:8px;overflow-x:auto;white-space:pre;word-break:normal"></pre>
+        </details>
+        <div id="flow-related-files" style="font-size:10px;color:var(--vscode-descriptionForeground)"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -649,7 +703,7 @@ function openFileHandler(path) {
 /* ══════════════════════════════════════════════════════════
    TABS
 ══════════════════════════════════════════════════════════ */
-const TAB_NAMES = ['analyze','graph','summary','qa','aitools','history','settings'];
+const TAB_NAMES = ['analyze','graph','summary','flow','qa','aitools','history','settings'];
 function showTab(name) {
   document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', TAB_NAMES[i]===name));
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
@@ -680,8 +734,9 @@ function setAnalyzing(on) {
 function setProgress(step, pct, msg) {
   document.getElementById('pbar').style.width = pct+'%';
   document.getElementById('progress-msg').textContent = msg;
-  ['ps1','ps2','ps3','ps4'].forEach((id,i) => {
+  ['ps1','ps2','ps3','ps4','ps5'].forEach((id,i) => {
     const el = document.getElementById(id);
+    if (!el) return;
     el.className = (i+1 < step) ? 'done' : (i+1===step) ? 'active' : '';
   });
 }
@@ -1125,7 +1180,6 @@ let _summary=null, _repoName='';
 
 window.addEventListener('message', e=>{
   const {type, payload} = e.data;
-  const stepPct={1:15,2:40,3:65,4:85};
 
   switch(type){
     case 'workspaceStatus':
@@ -1135,24 +1189,18 @@ window.addEventListener('message', e=>{
       }
       break;
 
-    case 'progress':
-      setProgress(payload.step, stepPct[payload.step]||10, payload.message);
+    case 'progress': {
+      const pct5 = {1:12,2:35,3:60,4:82,5:95};
+      setProgress(payload.step, pct5[payload.step]||10, payload.message);
       break;
+    }
 
     case 'graphReady':
       setProgress(2,40,'Graph built!');
       initGraph(payload);
       break;
 
-    case 'analysisRestored':
-      _repoName=payload.repoName; _summary=payload.summary;
-      setAnalyzing(false);
-      initGraph(payload.graph);
-      showFileSummaries(payload.fileSummaries||[]);
-      if(_summary) showSummary(_summary,_repoName);
-      if(payload.hasQA) enableQA();
-      showAlert('analyze','✓ Restored previous analysis. Re-analyze to refresh it.','success');
-      break;
+    // analysisRestored — handled in the case block below
 
     case 'summaryReady':
       _summary=payload; setProgress(3,65,'Summary generated!'); break;
@@ -1161,10 +1209,34 @@ window.addEventListener('message', e=>{
       setProgress(4,88,'File summaries done!'); showFileSummaries(payload); break;
 
     case 'analysisComplete':
-      _repoName=payload.repoName; setProgress(4,100,'Analysis complete!'); setAnalyzing(false);
+      _repoName=payload.repoName; setProgress(5,100,'Analysis complete!'); setAnalyzing(false);
       if(_summary) showSummary(_summary,_repoName); enableQA();
-      showAlert('analyze','✓ Done! Open Graph, Summary and Q&A tabs.','success');
+      showAlert('analyze','✓ Done! Open Graph, Summary, Flow and Q&A tabs.','success');
       break;
+
+    case 'flowMapReady':
+      showFlowMap(payload);
+      break;
+
+    case 'analysisRestored':
+      _repoName=payload.repoName; _summary=payload.summary;
+      setAnalyzing(false);
+      initGraph(payload.graph);
+      showFileSummaries(payload.fileSummaries||[]);
+      if(_summary) showSummary(_summary,_repoName);
+      if(payload.flowMap) showFlowMap(payload.flowMap);
+      if(payload.hasQA) enableQA();
+      showAlert('analyze','✓ Restored previous analysis. Re-analyze to refresh it.','success');
+      break;
+
+    case 'customFlowReady':
+      addCustomFlowTile(payload.diagram);
+      break;
+
+    case 'customFlowBusy': {
+      const ab=document.getElementById('flow-ask-btn'); if(ab) ab.disabled=payload.busy;
+      break;
+    }
 
     case 'answer':
       removeThinking(); addMsg('ai',payload.answer); break;
@@ -1268,6 +1340,76 @@ window.addEventListener('load', () => {
 
   if(vscode) vscode.postMessage({type:'getSettings'});
 });
+
+/* ══════════════════════════════════════════════════════════
+   FLOW DIAGRAMS
+══════════════════════════════════════════════════════════ */
+let _currentFlowMap = null;
+let _selectedFlowId = null;
+
+function showFlowMap(flowMap) {
+  _currentFlowMap = flowMap;
+  document.getElementById('flow-empty').style.display='none';
+  document.getElementById('flow-ready').style.display='flex';
+  closeFlowDetail();
+  const tiles = document.getElementById('flow-tiles');
+  tiles.innerHTML = '';
+  // Overview tile first
+  if (flowMap.overviewMermaid) {
+    const ovTile = buildFlowTile({ id:'__overview', title:'Overview', description:'How the flows connect to each other', category:'service', mermaidCode: flowMap.overviewMermaid, relatedFiles:[] });
+    tiles.appendChild(ovTile);
+  }
+  (flowMap.subDiagrams||[]).forEach(d => tiles.appendChild(buildFlowTile(d)));
+}
+
+function buildFlowTile(diagram) {
+  const catColors = { auth:'#f48771', api:'#569cd6', data:'#4ec9b0', component:'#c586c0', service:'#dcdcaa', background:'#9cdcfe', custom:'#d7ba7d' };
+  const color = catColors[diagram.category] || '#9cdcfe';
+  const div = document.createElement('div');
+  div.className = 'card';
+  div.style.cursor = 'pointer';
+  div.style.borderLeft = '3px solid ' + color;
+  div.innerHTML =
+    '<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">' +
+    '<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:'+color+'">' + escHtml(diagram.category) + '</span>' +
+    '</div>' +
+    '<div class="card-title">' + escHtml(diagram.title) + '</div>' +
+    '<div class="card-body" style="margin-top:3px">' + escHtml(diagram.description) + '</div>' +
+    (diagram.relatedFiles?.length ? '<div style="margin-top:5px;font-size:9.5px;color:var(--vscode-descriptionForeground)">' + diagram.relatedFiles.slice(0,3).map(f=>'<code>'+escHtml(f)+'</code>').join(' ') + '</div>' : '');
+  div.addEventListener('click', () => openFlowDetail(diagram));
+  return div;
+}
+
+function openFlowDetail(diagram) {
+  _selectedFlowId = diagram.id;
+  document.getElementById('flow-tiles').style.display = 'none';
+  document.getElementById('flow-detail').style.display = 'flex';
+  document.getElementById('flow-detail-title').textContent = diagram.title;
+  document.getElementById('flow-mermaid-src').textContent = diagram.mermaidCode;
+}
+
+function closeFlowDetail() {
+  _selectedFlowId = null;
+  document.getElementById('flow-detail').style.display = 'none';
+  document.getElementById('flow-tiles').style.display = 'flex';
+}
+
+function addCustomFlowTile(diagram) {
+  const tiles = document.getElementById('flow-tiles');
+  if (tiles) tiles.prepend(buildFlowTile(diagram));
+  // Also add to the in-memory map so it persists during the session
+  if (_currentFlowMap) _currentFlowMap.subDiagrams.unshift(diagram);
+  document.getElementById('flow-empty').style.display='none';
+  document.getElementById('flow-ready').style.display='flex';
+}
+
+function askCustomFlow() {
+  const inp = document.getElementById('flow-question');
+  const q = inp?.value?.trim();
+  if (!q) return;
+  inp.value = '';
+  if (vscode) vscode.postMessage({ type: 'generateCustomFlow', payload: { question: q } });
+}
 </script>
 </body>
 </html>`;
