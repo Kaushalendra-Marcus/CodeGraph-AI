@@ -1,4 +1,5 @@
-import { RepoFile } from "./RepoFetcher";
+// GraphBuilder.ts — builds a dependency graph from scanned workspace files.
+// Note: RepoFetcher is kept for type compatibility but not directly used here.
 
 export interface GraphNode {
   id: string;
@@ -95,34 +96,43 @@ function normalizePath(raw: string): string {
   return out.join("/");
 }
 
+/**
+ * Expands a normalized import base path into all possible candidate file paths
+ * (with and without extensions, plus barrel index files).
+ * This function was missing in the original code, causing a ReferenceError at runtime.
+ */
+function expandImportCandidates(base: string): string[] {
+  const exts = [".ts", ".tsx", ".js", ".jsx", ".vue", ".svelte", ".py", ".rb", ".go"];
+  const candidates: string[] = [base];
+  for (const ext of exts) {
+    candidates.push(`${base}${ext}`);
+    candidates.push(`${base}/index${ext}`);
+  }
+  return candidates;
+}
 
 function findBySuffix(base: string, allPaths: Set<string>): string | null {
   const normalized = normalizePath(base);
-  // Exact match first
   if (allPaths.has(normalized)) return normalized;
-  
+
   const matches = [...allPaths].filter((candidate) => {
-    const path = normalizePath(candidate);
-    // Only match if:
-    // 1. Exact match
-    // 2. Candidate ends with /normalized (module folder import)
-    // 3. Candidate ends with /normalized.ext or /normalized/index.ext
-    return path === normalized || 
-           path.endsWith(`/${normalized}`) || 
-           path.endsWith(`/${normalized}.ts`) || 
-           path.endsWith(`/${normalized}.tsx`) || 
-           path.endsWith(`/${normalized}.js`) || 
-           path.endsWith(`/${normalized}.jsx`) || 
-           path.endsWith(`/${normalized}.vue`) || 
-           path.endsWith(`/${normalized}.svelte`) || 
-           path.endsWith(`/${normalized}.py`) ||
-           path === `${normalized}/index.ts` ||
-           path === `${normalized}/index.tsx` ||
-           path === `${normalized}/index.js` ||
-           path === `${normalized}/index.jsx` ||
-           path === `${normalized}/index.vue` ||
-           path === `${normalized}/index.svelte` ||
-           path === `${normalized}/index.py`;
+    const p = normalizePath(candidate);
+    return p === normalized ||
+      p.endsWith(`/${normalized}`) ||
+      p.endsWith(`/${normalized}.ts`) ||
+      p.endsWith(`/${normalized}.tsx`) ||
+      p.endsWith(`/${normalized}.js`) ||
+      p.endsWith(`/${normalized}.jsx`) ||
+      p.endsWith(`/${normalized}.vue`) ||
+      p.endsWith(`/${normalized}.svelte`) ||
+      p.endsWith(`/${normalized}.py`) ||
+      p === `${normalized}/index.ts` ||
+      p === `${normalized}/index.tsx` ||
+      p === `${normalized}/index.js` ||
+      p === `${normalized}/index.jsx` ||
+      p === `${normalized}/index.vue` ||
+      p === `${normalized}/index.svelte` ||
+      p === `${normalized}/index.py`;
   });
   if (!matches.length) return null;
   matches.sort((a, b) => a.length - b.length);
@@ -132,16 +142,18 @@ function findBySuffix(base: string, allPaths: Set<string>): string | null {
 function resolveImport(imp: string, fromPath: string, allPaths: Set<string>): string | null {
   if (!imp.startsWith(".") && !imp.startsWith("~") && !imp.startsWith("@/") && !imp.startsWith("/")) return null;
   const fromDir = normalizePath(fromPath).split("/").slice(0, -1).join("/");
-  const rawBase = imp.startsWith("@/") || imp.startsWith("~/") ? imp.slice(2) : imp.startsWith("/") ? imp.slice(1) : normalizePath(`${fromDir}/${imp}`);
+  const rawBase = imp.startsWith("@/") || imp.startsWith("~/")
+    ? imp.slice(2)
+    : imp.startsWith("/")
+      ? imp.slice(1)
+      : normalizePath(`${fromDir}/${imp}`);
   const base = normalizePath(rawBase);
 
   for (const candidate of expandImportCandidates(base)) {
     if (allPaths.has(candidate)) return candidate;
   }
 
-  const suffixMatch = findBySuffix(base, allPaths);
-  if (suffixMatch) return suffixMatch;
-  return null;
+  return findBySuffix(base, allPaths);
 }
 
 export function buildDependencyGraph(
@@ -152,15 +164,23 @@ export function buildDependencyGraph(
 
   for (const file of files) {
     const matches = extractImports(file.content, file.language);
-    const exports = extractExports(file.content, file.language);
+    const fileExports = extractExports(file.content, file.language);
     const label = file.path.split("/").pop() || file.path;
     const parts = file.path.split("/");
     const group = parts.length > 1 ? parts[0] : "root";
     nodeMap.set(file.path, {
-      id: file.path, label, path: file.path, absPath: (file as any).absPath,
-      language: file.language, size: file.size,
-      imports: matches.map((i) => i.path), importedBy: [], exports,
-      group, inDegree: 0, outDegree: 0,
+      id: file.path,
+      label,
+      path: file.path,
+      absPath: (file as any).absPath,
+      language: file.language,
+      size: file.size,
+      imports: matches.map((i) => i.path),
+      importedBy: [],
+      exports: fileExports,
+      group,
+      inDegree: 0,
+      outDegree: 0,
     });
   }
 
@@ -183,7 +203,6 @@ export function buildDependencyGraph(
     }
   }
 
-  // Normalize duplicate references and stabilize the important nodes.
   for (const node of nodeMap.values()) {
     node.importedBy = [...new Set(node.importedBy)];
     node.imports = [...new Set(node.imports)];

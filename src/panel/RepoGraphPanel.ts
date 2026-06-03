@@ -4,6 +4,7 @@ import { scanWorkspace, WorkspaceInfo } from "../analyzer/WorkspaceScanner";
 import { buildDependencyGraph, DependencyGraph } from "../analyzer/GraphBuilder";
 import { summarizeRepo, summarizeFiles, QAAgent, RepoSummary, FileSummary } from "../agents";
 import { getWebviewContent } from "./webviewContent";
+import { DocGenerator } from "../generators/DocGenerator";
 
 interface ProviderSettings {
   name: string;
@@ -14,13 +15,12 @@ interface ProviderSettings {
 
 export interface AnalysisRecord {
   id: string;
-  label: string;          // e.g. "my-project — 2 Jun 14:32"
+  label: string;
   timestamp: number;
   repoName: string;
   graph: DependencyGraph;
   summary: RepoSummary;
   fileSummaries: FileSummary[];
-  // We do not persist full file contents — workspace can be re-read
 }
 
 export class RepoGraphPanel implements vscode.WebviewViewProvider {
@@ -30,6 +30,8 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
   private workspaceInfo?: WorkspaceInfo;
   private currentGraph?: DependencyGraph;
   private currentSummary?: RepoSummary;
+  private currentFileSummaries?: FileSummary[];
+  private totalTokensUsed: number = 0;
   private readonly output: vscode.OutputChannel;
 
   constructor(private readonly context: vscode.ExtensionContext) {
@@ -44,12 +46,11 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
     this.view = webviewView;
     webviewView.webview.options = { enableScripts: true };
     const cspSource = webviewView.webview.cspSource;
-    
-    // Build icon URIs for webview
+
     const iconUris: Record<string, string> = {};
     const iconNames = [
-      'local-workspace.svg', 'analyze-workspace.svg', 'graph-empty.svg', 
-      'summary-empty.svg', 'qa-empty.svg', 'open-file.svg', 
+      'local-workspace.svg', 'analyze-workspace.svg', 'graph-empty.svg',
+      'summary-empty.svg', 'qa-empty.svg', 'open-file.svg',
       'imports.svg', 'used-by.svg', 'language.svg', 'user.svg', 'ai.svg'
     ];
     for (const name of iconNames) {
@@ -57,7 +58,7 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
         vscode.Uri.joinPath(this.context.extensionUri, 'public', name)
       ).toString();
     }
-    
+
     webviewView.webview.html = getWebviewContent({ cspSource, iconUris });
 
     void this.loadSavedSettings();
@@ -76,6 +77,11 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
           case "getSettings":     await this.loadSavedSettings(); break;
           case "loadAnalysis":    await this.handleLoadAnalysis(msg.payload); break;
           case "deleteAnalysis":  await this.handleDeleteAnalysis(msg.payload); break;
+          case "generateDoc":     await this.handleGenerateDoc(msg.payload); break;
+          case "analyzeRefactor": await this.handleAnalyzeRefactor(); break;
+          case "reviewPR":        await this.handleReviewPR(msg.payload); break;
+          case "saveLayout":      await this.handleSaveLayout(msg.payload); break;
+          case "saveDoc":         await this.handleSaveDoc(msg.payload); break;
         }
       } catch (e: unknown) {
         const message = e instanceof Error ? e.message : String(e);
@@ -107,7 +113,6 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
     try {
       const key = apiKey || (await this.context.secrets.get(`repograph.${name}.apiKey`));
       this.provider = createProvider(name, { name, apiKey: key, model, baseUrl });
-      // Re-init QA agent with new provider if analysis exists
       if (this.workspaceInfo && this.currentGraph && this.currentSummary) {
         this.qaAgent = new QAAgent(
           this.provider,
@@ -139,7 +144,7 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
     try {
       this.provider = createProvider(name, { name, apiKey, model, baseUrl });
     } catch {
-      // provider creation can fail if key missing — that is fine at startup
+      // provider creation can fail if key missing — fine at startup
     }
 
     this.post({
@@ -155,7 +160,6 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
   }
 
   private async saveHistory(records: AnalysisRecord[]) {
-    // Keep latest 20 analyses, sorted by timestamp descending
     const trimmed = records.slice(0, 20);
     await this.context.workspaceState.update("repograph.history", trimmed);
   }
@@ -164,19 +168,15 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
     const records = this.getHistory();
     if (records.length === 0) return;
 
-    // Send history list to UI
     this.post({
       type: "historyLoaded",
       payload: { records: records.map(this.recordMeta) },
     });
 
-    // Auto-restore latest analysis into state (no need to re-render graph yet)
     const latest = records[0];
     this.currentGraph = latest.graph;
     this.currentSummary = latest.summary;
 
-    // Initialize QA agent with summary context so Q&A works immediately after restart,
-    // even before the user re-scans the workspace.
     if (this.provider) {
       const stubInfo = { name: latest.repoName, rootPath: "", files: [], isLocal: true as const };
       this.qaAgent = new QAAgent(this.provider, stubInfo, latest.graph, latest.summary);
@@ -198,8 +198,6 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
     this.currentGraph = record.graph;
     this.currentSummary = record.summary;
 
-    // Re-init QA if provider available — workspace info may not be loaded
-    // so QA will work with summary context only
     if (this.provider && this.workspaceInfo) {
       this.qaAgent = new QAAgent(
         this.provider,
@@ -219,6 +217,8 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
         hasQA: !!this.qaAgent,
       },
     });
+    this.currentFileSummaries = record.fileSummaries;
+    void this.sendSavedLayout();
   }
 
   private async handleDeleteAnalysis(payload: { id: string }) {
@@ -250,36 +250,31 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
     if (!wsInfo) throw new Error("No workspace found.");
     this.workspaceInfo = wsInfo;
 
-    // Step 2: dependency graph
     this.post({ type: "progress", payload: { step: 2, message: "Building dependency graph..." } });
     const graph = buildDependencyGraph(wsInfo.files);
     this.currentGraph = graph;
     this.post({ type: "graphReady", payload: { nodes: graph.nodes, edges: graph.edges } });
+    void this.sendSavedLayout();
 
-    // Step 3: repo summary
     this.post({ type: "progress", payload: { step: 3, message: "Generating AI summary..." } });
     const summary = await summarizeRepo(this.provider, wsInfo, graph);
     this.currentSummary = summary;
     this.post({ type: "summaryReady", payload: summary });
 
-    // Step 4: file summaries
     this.post({ type: "progress", payload: { step: 4, message: "Summarizing key files..." } });
     const fileSummaries = await summarizeFiles(this.provider, graph.nodes, wsInfo, (done, total) => {
       this.post({ type: "progress", payload: { step: 4, message: `Summarizing files ${done}/${total}...` } });
     });
     this.post({ type: "fileSummariesReady", payload: fileSummaries });
+    this.currentFileSummaries = fileSummaries;
 
-    // QA agent
     this.qaAgent = new QAAgent(this.provider, wsInfo, graph, summary);
 
-    // Persist to history (keep all runs; don't filter by repoName)
     const now = Date.now();
     const label = `${wsInfo.name} — ${new Date(now).toLocaleString("en-IN", {
       day: "numeric", month: "short", hour: "2-digit", minute: "2-digit",
     })}`;
 
-    // Slim the stored graph: edges can be very large and workspaceState has a ~2 MB soft limit.
-    // We cap edges so history serialization stays well within budget.
     const slimGraph = { nodes: graph.nodes, edges: graph.edges.slice(0, 500) };
 
     const record: AnalysisRecord = {
@@ -297,12 +292,128 @@ export class RepoGraphPanel implements vscode.WebviewViewProvider {
 
     this.post({
       type: "historyLoaded",
-      payload: {
-        records: this.getHistory().map(this.recordMeta),
-      },
+      payload: { records: this.getHistory().map(this.recordMeta) },
     });
 
     this.post({ type: "analysisComplete", payload: { repoName: wsInfo.name } });
+  }
+
+  // ── AI Tools ───────────────────────────────────────────────────────────
+
+  private requiresAnalysis(featureName: string): boolean {
+    if (!this.provider) {
+      this.post({ type: "aiToolError", payload: { message: "Configure an AI provider in Settings first." } });
+      return false;
+    }
+    if (!this.currentSummary || !this.currentGraph) {
+      this.post({ type: "aiToolError", payload: { message: `Analyze a workspace first before using ${featureName}.` } });
+      return false;
+    }
+    return true;
+  }
+
+  private addTokens(n: number) {
+    this.totalTokensUsed += n;
+    this.post({ type: "tokenUsage", payload: { total: this.totalTokensUsed } });
+  }
+
+  private async handleGenerateDoc(payload: { docType: string }) {
+    if (!this.requiresAnalysis("document generation")) return;
+    const gen = new DocGenerator(this.provider!);
+    const repoName = this.workspaceInfo?.name ?? this.currentGraph!.nodes[0]?.path.split("/")[0] ?? "Project";
+    const fileSummaries = this.currentFileSummaries ?? [];
+
+    this.post({ type: "aiToolBusy", payload: { docType: payload.docType, busy: true } });
+    try {
+      let result;
+      let filename: string;
+      switch (payload.docType) {
+        case "readme":
+          result = await gen.generateReadme(this.currentSummary!, fileSummaries, repoName);
+          filename = "README-REPOGRAPH.md";
+          break;
+        case "architecture":
+          result = await gen.generateArchitecture(this.currentSummary!, this.currentGraph!, fileSummaries, repoName);
+          filename = "ARCHITECTURE-REPOGRAPH.md";
+          break;
+        case "onboarding":
+          result = await gen.generateOnboarding(this.currentSummary!, fileSummaries, repoName);
+          filename = "ONBOARDING-REPOGRAPH.md";
+          break;
+        default:
+          throw new Error(`Unknown docType: ${payload.docType}`);
+      }
+      await DocGenerator.saveToWorkspace(filename, result.content);
+      this.addTokens(result.tokensUsed);
+      this.post({ type: "docSaved", payload: { docType: payload.docType, filename } });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.post({ type: "aiToolError", payload: { message } });
+    } finally {
+      this.post({ type: "aiToolBusy", payload: { docType: payload.docType, busy: false } });
+    }
+  }
+
+  private async handleAnalyzeRefactor() {
+    if (!this.requiresAnalysis("refactor analysis")) return;
+    const gen = new DocGenerator(this.provider!);
+    this.post({ type: "aiToolBusy", payload: { docType: "refactor", busy: true } });
+    try {
+      const result = await gen.analyzeRefactor(
+        this.currentSummary!,
+        this.currentGraph!,
+        this.currentFileSummaries ?? []
+      );
+      this.addTokens(result.tokensUsed);
+      this.post({ type: "refactorResult", payload: { content: result.content } });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.post({ type: "aiToolError", payload: { message } });
+    } finally {
+      this.post({ type: "aiToolBusy", payload: { docType: "refactor", busy: false } });
+    }
+  }
+
+  private async handleReviewPR(payload: { diff: string }) {
+    if (!this.requiresAnalysis("PR review")) return;
+    if (!payload.diff?.trim()) {
+      this.post({ type: "aiToolError", payload: { message: "Paste a git diff first." } });
+      return;
+    }
+    const gen = new DocGenerator(this.provider!);
+    const repoName = this.workspaceInfo?.name ?? "Project";
+    this.post({ type: "aiToolBusy", payload: { docType: "pr", busy: true } });
+    try {
+      const result = await gen.reviewPR(payload.diff, this.currentSummary!, repoName);
+      this.addTokens(result.tokensUsed);
+      this.post({ type: "prReviewResult", payload: { content: result.content } });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.post({ type: "aiToolError", payload: { message } });
+    } finally {
+      this.post({ type: "aiToolBusy", payload: { docType: "pr", busy: false } });
+    }
+  }
+
+  private async handleSaveDoc(payload: { filename: string; content: string }) {
+    try {
+      await DocGenerator.saveToWorkspace(payload.filename, payload.content);
+      this.post({ type: "docSaved", payload: { filename: payload.filename } });
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : String(e);
+      this.post({ type: "aiToolError", payload: { message } });
+    }
+  }
+
+  private async handleSaveLayout(payload: { positions: { id: string; x: number; y: number }[] }) {
+    await this.context.workspaceState.update("repograph.graphLayout", payload.positions);
+  }
+
+  private async sendSavedLayout() {
+    const positions = this.context.workspaceState.get<{ id: string; x: number; y: number }[]>("repograph.graphLayout");
+    if (positions?.length) {
+      this.post({ type: "layoutLoaded", payload: { positions } });
+    }
   }
 
   // ── Open file ──────────────────────────────────────────────────────────
