@@ -1,0 +1,146 @@
+<div id="tab-settings" class="screen">
+  <div class="scroll">
+    <div id="settings-alert"></div>
+    <div style="font-size:11.5px;font-weight:600;margin-bottom:6px">AI Provider</div>
+    <div style="font-size:11px;color:var(--vscode-descriptionForeground);margin-bottom:10px;line-height:1.65">
+      Keys are stored in VS Code encrypted SecretStorage — never in plain text.
+    </div>
+
+    <!-- Groq -->
+    <div class="provider-card" id="pc-groq">
+      <div class="provider-hdr">
+        <div class="p-icon" style="background:#0a2a1e;color:#4ec9b0">G</div>
+        <div class="p-name">Groq</div>
+        <span class="badge badge-free">FREE</span>
+      </div>
+      <div class="provider-fields" id="pf-groq">
+        <label>API Key</label>
+        <input id="key-groq" type="password" placeholder="gsk_...">
+        <label>Model</label>
+        <div class="model-row">
+          <select id="model-groq">
+            <option value="llama-3.3-70b-versatile">llama-3.3-70b-versatile (recommended)</option>
+            <option value="mixtral-8x7b-32768">mixtral-8x7b-32768</option>
+            <option value="gemma2-9b-it">gemma2-9b-it</option>
+            <option value="__custom__">Other…</option>
+          </select>
+          <input id="custom-model-groq" type="text" placeholder="Type custom model" style="display:none">
+        </div>
+        <div style="margin-top:8px;display:flex;align-items:center;gap:8px">
+          <button class="btn btn-sm save-provider-btn" data-name="groq">Save</button>
+          <a href="https://console.groq.com/keys" style="font-size:10.5px;color:#569cd6;text-decoration:none">
+            Get free key ↗
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ollama -->
+    <div class="provider-card" id="pc-ollama">
+      <div class="provider-hdr">
+        <div class="p-icon" style="background:#2a1f0e;color:#dcdcaa">O</div>
+        <div class="p-name">Ollama (Local)</div>
+        <span class="badge badge-free">100% FREE</span>
+      </div>
+      <div class="provider-fields" id="pf-ollama">
+        <div class="alert alert-info" style="margin-bottom:6px">Runs locally — no API key needed.</div>
+        <label>Model</label>
+        <input id="model-ollama" type="text" value="llama3.2" placeholder="llama3.2">
+        <label>Base URL</label>
+        <input id="baseurl-ollama" type="text" value="http://localhost:11434">
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+          <button class="btn btn-sm save-provider-btn" data-name="ollama">Save</button>
+          <a href="https://ollama.com" style="font-size:10.5px;color:#569cd6;text-decoration:none">Download Ollama ↗</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Gemini -->
+    <div class="provider-card" id="pc-gemini">
+      <div class="provider-hdr">
+        <div class="p-icon" style="background:#1c2a3e;color:#9cdcfe">G</div>
+        <div class="p-name">Google Gemini</div>
+        <span class="badge badge-free">FREE tier</span>
+      </div>
+      <div class="provider-fields" id="pf-gemini">
+        <label>API Key</label>
+        <input id="key-gemini" type="password" placeholder="AIza...">
+        <label>Model</label>
+        <div class="model-row">
+          <select id="model-gemini">
+            <option value="gemini-1.5-flash">gemini-1.5-flash (free)</option>
+            <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+            <option value="__custom__">Other…</option>
+          </select>
+          <input id="custom-model-gemini" type="text" placeholder="Type custom model" style="display:none">
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;align-items:center">
+          <button class="btn btn-sm save-provider-btn" data-name="gemini">Save</button>
+          <a href="https://aistudio.google.com/app/apikey" style="font-size:10.5px;color:#569cd6;text-decoration:none">
+            Get free key ↗
+          </a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Anthropic -->
+    <div class="provider-card" id="pc-anthropic">
+      <div class="provider-hdr">
+        <div class="p-icon" style="background:#2d1f4e;color:#c586c0">A</div>
+        <div class="p-name">Anthropic Claude</div>
+        <span class="badge badge-paid">PAID</span>
+      </div>
+      <div class="provider-fields" id="pf-anthropic">
+        <label>API Key</label>
+        <input id="key-anthropic" type="password" placeholder="sk-ant-...">
+        <label>Model</label>
+        <div class="model-row">
+          <select id="model-anthropic">
+            <option value="claude-haiku-4-5-20251001">claude-haiku (fastest)</option>
+            <option value="claude-sonnet-4-6">claude-sonnet (best)</option>
+            <option value="__custom__">Other…</option>
+          </select>
+          <input id="custom-model-anthropic" type="text" placeholder="Type custom model" style="display:none">
+        </div>
+        <div style="margin-top:8px">
+          <button class="btn btn-sm save-provider-btn" data-name="anthropic">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- OpenAI -->
+    <div class="provider-card" id="pc-openai">
+      <div class="provider-hdr">
+        <div class="p-icon" style="background:#1a2d1a;color:#4ec9b0">O</div>
+        <div class="p-name">OpenAI</div>
+        <span class="badge badge-paid">PAID</span>
+      </div>
+      <div class="provider-fields" id="pf-openai">
+        <label>API Key</label>
+        <input id="key-openai" type="password" placeholder="sk-...">
+        <label>Model</label>
+        <div class="model-row">
+          <select id="model-openai">
+            <option value="gpt-4o-mini">gpt-4o-mini (cheapest)</option>
+            <option value="gpt-4o">gpt-4o</option>
+            <option value="__custom__">Other…</option>
+          </select>
+          <input id="custom-model-openai" type="text" placeholder="Type custom model" style="display:none">
+        </div>
+        <div style="margin-top:8px">
+          <button class="btn btn-sm save-provider-btn" data-name="openai">Save</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Usage -->
+    <div style="margin-top:16px;padding-top:10px;border-top:1px solid var(--vscode-panel-border)">
+      <div style="font-size:11px;font-weight:600;margin-bottom:4px;color:var(--vscode-descriptionForeground)">
+        Usage
+      </div>
+      <div id="token-display" style="font-size:11px;color:var(--vscode-descriptionForeground)">
+        No analysis run yet
+      </div>
+    </div>
+  </div>
+</div>

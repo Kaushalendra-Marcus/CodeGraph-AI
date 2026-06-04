@@ -1,0 +1,31 @@
+<div id="tab-qa" class="screen">
+  <div id="qa-empty" class="empty" style="display:flex">
+    <div class="empty-title">Q&amp;A Not Ready</div>
+    <div class="empty-sub">Analyze a project first, then ask anything about the codebase</div>
+  </div>
+
+  <div id="qa-ready" style="display:none;flex-direction:column;height:100%;min-height:0;flex:1">
+    <div class="chat-history" id="chat-history"></div>
+
+    <div class="chat-footer">
+      <div class="quick-qs">
+        <span class="qq" data-q="What does this project do?">What does it do?</span>
+        <span class="qq" data-q="Where is the entry point?">Entry point?</span>
+        <span class="qq" data-q="How is authentication handled?">Auth?</span>
+        <span class="qq" data-q="What are the main modules?">Key modules?</span>
+        <span class="qq" data-q="How do I run this project locally?">How to run?</span>
+        <span class="qq" data-q="What databases or external services are used?">DB / Services?</span>
+      </div>
+      <div class="chat-row">
+        <textarea
+          class="chat-input"
+          id="chat-input"
+          placeholder="Ask anything about the codebase..."
+          rows="1"
+          onkeydown="chatKey(event)"
+        ></textarea>
+        <button class="btn btn-sm" onclick="sendQ()" style="align-self:flex-end">↑</button>
+      </div>
+    </div>
+  </div>
+</div>

@@ -1,0 +1,47 @@
+<div id="tab-graph" class="screen">
+  <!-- Empty state -->
+  <div id="graph-empty" class="empty" style="display:flex">
+    <div class="empty-title">Dependency Graph</div>
+    <div class="empty-sub">Analyze a project to see how files connect to each other</div>
+  </div>
+
+  <!-- Graph canvas wrapper — shown after analysis -->
+  <div id="graph-wrap" style="display:none;flex:1;flex-direction:column;min-height:0">
+    <div class="graph-toolbar">
+      <input type="text" id="graph-search" placeholder="Search file..." oninput="graphSearch(this.value)">
+      <div class="zoom-btns">
+        <div class="zoom-btn" onclick="zoom(1.25)" title="Zoom in">+</div>
+        <div class="zoom-btn" onclick="zoom(0.8)"  title="Zoom out">−</div>
+        <div class="zoom-btn" onclick="resetView()" title="Fit all">⤢</div>
+        <div class="zoom-btn" id="filter-toggle" onclick="toggleFilterPanel()" title="Filter">☰</div>
+      </div>
+      <div class="legend" id="graph-legend"></div>
+      <div class="graph-stats" id="graph-stats"></div>
+    </div>
+
+    <div id="filter-panel" style="display:none">
+      <div class="filter-row">
+        <div><span class="filter-label">Extensions:</span> <span id="ext-filters"></span></div>
+        <div class="depth-row">
+          <span class="filter-label">Depth:</span>
+          <input type="range" id="depth-filter" min="1" max="6" value="6">
+          <span id="depth-val" style="font-family:monospace;font-size:10px;min-width:24px">All</span>
+        </div>
+        <button class="btn btn-sm btn-secondary" id="clear-filter-btn">Clear</button>
+      </div>
+    </div>
+
+    <div id="graph-canvas-wrap">
+      <canvas id="graph-canvas"></canvas>
+
+      <!-- Node detail side panel -->
+      <div id="node-detail">
+        <div id="node-detail-header">
+          <div id="node-detail-filename"></div>
+          <button id="node-detail-close" onclick="closeNodeDetail()">✕</button>
+        </div>
+        <div id="node-detail-body"></div>
+      </div>
+    </div>
+  </div>
+</div>

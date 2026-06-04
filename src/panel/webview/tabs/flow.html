@@ -1,0 +1,46 @@
+<div id="tab-flow" class="screen" style="position:relative">
+
+  <!-- Empty state -->
+  <div id="flow-empty" class="empty" style="display:flex">
+    <div class="empty-title">Data Flow Diagrams</div>
+    <div class="empty-sub">
+      Analyze a project to auto-detect flows, or ask a question below to generate a custom diagram.
+    </div>
+  </div>
+
+  <!-- Main flow view — shown after analysis -->
+  <div id="flow-ready" style="display:none;flex-direction:column;flex:1;min-height:0;overflow:hidden">
+
+    <!-- Toolbar: ask custom + overview toggle -->
+    <div class="flow-toolbar">
+      <div class="flow-ask-row">
+        <input
+          type="text"
+          class="flow-ask-input"
+          id="flow-ask-input"
+          placeholder='Ask: "show me the auth flow" or "how does the order service work?"'
+        />
+        <button class="btn btn-sm" id="flow-ask-btn">Generate</button>
+      </div>
+    </div>
+
+    <!-- Sub-diagram grid (overview) -->
+    <div id="flow-grid-wrap" style="flex:1;overflow-y:auto;min-height:0">
+      <div class="flow-grid" id="flow-grid"></div>
+    </div>
+
+    <!-- Detail panel: opens on tile click, overlays the grid -->
+    <div id="flow-detail">
+      <div id="flow-detail-header">
+        <div id="flow-detail-title">Flow detail</div>
+        <button id="flow-detail-close">✕</button>
+      </div>
+      <div id="flow-detail-body">
+        <!-- Mermaid diagram rendered here -->
+        <div id="flow-detail-mermaid" class="mermaid"></div>
+        <div id="flow-detail-files" style="margin-top:12px;font-size:11px;color:var(--vscode-descriptionForeground)"></div>
+      </div>
+    </div>
+  </div>
+
+</div>

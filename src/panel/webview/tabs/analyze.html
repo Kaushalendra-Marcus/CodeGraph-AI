@@ -1,0 +1,29 @@
+<div id="tab-analyze" class="screen active">
+  <div class="scroll">
+    <div id="analyze-alert"></div>
+    <div class="card" id="workspace-info-card">
+      <div class="card-title" id="ws-name">No workspace open</div>
+      <div class="card-body" id="ws-sub">Open a folder in VS Code to analyze your local project</div>
+    </div>
+    <button class="btn btn-block" id="local-analyze-btn" style="margin-bottom:10px">
+      Analyze Current Workspace
+    </button>
+    <div style="font-size:11px;color:var(--vscode-descriptionForeground);line-height:1.7">
+      Reads all code files from your workspace. Skips
+      <code>node_modules</code>, <code>dist</code>, <code>.git</code> etc. automatically.
+    </div>
+    <div id="progress-wrap" style="display:none" class="progress-wrap">
+      <div class="progress-bar-outer">
+        <div class="progress-bar-inner" id="pbar" style="width:8%"></div>
+      </div>
+      <div id="progress-msg" style="font-size:11px;color:var(--vscode-descriptionForeground)">Starting...</div>
+      <div class="progress-steps" style="margin-top:4px">
+        <span id="ps1">1.Scan</span>
+        <span id="ps2">2.Graph</span>
+        <span id="ps3">3.Summary</span>
+        <span id="ps4">4.Files</span>
+        <span id="ps5">5.Flows</span>
+      </div>
+    </div>
+  </div>
+</div>

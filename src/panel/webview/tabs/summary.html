@@ -1,0 +1,31 @@
+<div id="tab-summary" class="screen">
+  <div id="summary-empty" class="empty" style="display:flex">
+    <div class="empty-title">No Summary Yet</div>
+    <div class="empty-sub">Analyze a project first to see the AI-generated summary</div>
+  </div>
+  <div id="summary-ready" class="scroll" style="display:none">
+    <div class="section-hdr">Overview</div>
+    <div class="card">
+      <div class="card-title" id="s-name"></div>
+      <div class="card-body" id="s-overview"></div>
+    </div>
+
+    <div class="section-hdr">Architecture</div>
+    <div class="card"><div class="card-body" id="s-arch"></div></div>
+
+    <div class="section-hdr">Tech Stack</div>
+    <div id="s-tech" style="margin-bottom:8px"></div>
+
+    <div class="section-hdr">Key Modules</div>
+    <div id="s-modules"></div>
+
+    <div class="section-hdr">Entry Points</div>
+    <div id="s-entries" style="margin-bottom:8px;font-family:monospace;font-size:11px"></div>
+
+    <div class="section-hdr">
+      File Summaries
+      <span id="s-file-count" style="font-weight:400;text-transform:none;letter-spacing:0;font-size:10px"></span>
+    </div>
+    <div id="s-files"></div>
+  </div>
+</div>
