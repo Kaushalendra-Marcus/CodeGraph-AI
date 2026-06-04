@@ -458,19 +458,19 @@ input[type=password]{font-family:monospace;letter-spacing:0.05em}
     <div class="card" style="margin-bottom:10px">
       <div class="card-body" style="margin-bottom:8px">Save AI-generated docs to your workspace.</div>
       <div style="display:flex;flex-direction:column;gap:6px">
-        <button class="btn btn-block" id="gen-readme-btn">&#128196; Generate README-REPOGRAPH.md</button>
-        <button class="btn btn-block btn-secondary" id="gen-arch-btn">&#127963; Generate ARCHITECTURE-REPOGRAPH.md</button>
-        <button class="btn btn-block btn-secondary" id="gen-onboarding-btn">&#128075; Generate ONBOARDING-REPOGRAPH.md</button>
+        <button class="btn btn-block" id="gen-readme-btn"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M14 4.5V14a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h5.5L14 4.5zm-3 0A1.5 1.5 0 0 1 9.5 3V1H4a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1V4.5h-2z"/><path d="M5 11h6v1H5zm0-2h6v1H5zm0-2h3v1H5z"/></svg> Generate README-REPOGRAPH.md</button>
+        <button class="btn btn-block btn-secondary" id="gen-arch-btn"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M1 2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v1h3v-1a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v1h3v-1a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1v1h-3v1h1a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H9a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h1V6H6v1h1a1 1 0 0 1 1 1v2a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1v-2a1 1 0 0 1 1-1h1V6H3v-1a1 1 0 0 1-1-1V2z"/></svg> Generate ARCHITECTURE-REPOGRAPH.md</button>
+        <button class="btn btn-block btn-secondary" id="gen-onboarding-btn"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm2-3a2 2 0 1 1-4 0 2 2 0 0 1 4 0zm4 8c0 1-1 1-1 1H3s-1 0-1-1 1-4 6-4 6 3 6 4zm-1-.004c-.001-.246-.154-.986-.832-1.664C11.516 10.68 10.029 10 8 10c-2.03 0-3.516.68-4.168 1.332-.678.678-.83 1.418-.832 1.664h10z"/></svg> Generate ONBOARDING-REPOGRAPH.md</button>
       </div>
     </div>
     <div class="section-hdr">Refactor Analysis</div>
     <div class="card" style="margin-bottom:10px">
       <div class="card-body" style="margin-bottom:8px">Analyses coupling, god files, and architectural issues in your codebase.</div>
-      <button class="btn btn-block btn-secondary" id="refactor-btn">&#128269; Analyze Code Quality</button>
+      <button class="btn btn-block btn-secondary" id="refactor-btn"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398h-.001c.03.04.062.078.098.115l3.85 3.85a1 1 0 0 0 1.415-1.414l-3.85-3.85a1.007 1.007 0 0 0-.115-.1zM12 6.5a5.5 5.5 0 1 1-11 0 5.5 5.5 0 0 1 11 0z"/></svg> Analyze Code Quality</button>
       <div id="refactor-result" style="display:none;margin-top:10px">
         <div class="ai-tool-result-hdr">
           <span class="ai-tool-result-label">Analysis</span>
-          <button class="btn btn-sm btn-secondary" id="save-refactor-btn">Save as REFACTOR-REPOGRAPH.md</button>
+          <button class="btn btn-sm btn-secondary" id="save-refactor-btn"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 10.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h2.5a.5.5 0 0 1 0 1H2z"/></svg> Save as REFACTOR-REPOGRAPH.md</button>
         </div>
         <div class="ai-result-box" id="refactor-content"></div>
       </div>
@@ -480,13 +480,13 @@ input[type=password]{font-family:monospace;letter-spacing:0.05em}
       <div class="card-body" style="margin-bottom:6px">Paste a <code>git diff</code> and get a structured code review.</div>
       <textarea id="pr-diff-input" placeholder="Paste git diff output here..." style="min-height:80px;max-height:180px;resize:vertical;font-family:monospace;font-size:10.5px;margin-bottom:6px"></textarea>
       <div style="display:flex;gap:6px">
-        <button class="btn" id="review-pr-btn" style="flex:1">Review PR</button>
+        <button class="btn" id="review-pr-btn" style="flex:1"><svg width="13" height="13" viewBox="0 0 16 16" fill="currentColor"><path d="M1.5 2.5A2.5 2.5 0 0 1 4 0h8a2.5 2.5 0 0 1 2.5 2.5v10.042a2 2 0 0 1-.929 1.688l-1 .64a2 2 0 0 1-2.142 0l-1-.64a2 2 0 0 0-2.142 0l-1 .64a2 2 0 0 1-2.142 0l-1-.64A2 2 0 0 1 1.5 12.54V2.5zm2-.5a1.5 1.5 0 0 0-1.5 1.5v10.042a1 1 0 0 0 .464.844l1 .64a1 1 0 0 0 1.072 0l1-.64a3 3 0 0 1 3.128 0l1 .64a1 1 0 0 0 1.072 0l1-.64a1 1 0 0 0 .464-.844V2.5A1.5 1.5 0 0 0 12 1H4zM5 6h6v1H5V6zm0 2h6v1H5V8zm0 2h4v1H5v-1z"/></svg> Review PR</button>
         <button class="btn btn-secondary" id="clear-pr-btn">Clear</button>
       </div>
       <div id="pr-result" style="display:none;margin-top:10px">
         <div class="ai-tool-result-hdr">
           <span class="ai-tool-result-label">Review</span>
-          <button class="btn btn-sm btn-secondary" id="save-pr-btn">Save as PR-REVIEW-REPOGRAPH.md</button>
+          <button class="btn btn-sm btn-secondary" id="save-pr-btn"><svg width="11" height="11" viewBox="0 0 16 16" fill="currentColor"><path d="M2 1a1 1 0 0 0-1 1v12a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H9.5a1 1 0 0 0-1 1v7.293l2.646-2.647a.5.5 0 0 1 .708.708l-3.5 3.5a.5.5 0 0 1-.708 0l-3.5-3.5a.5.5 0 1 1 .708-.708L7.5 10.293V2a2 2 0 0 1 2-2H14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2h2.5a.5.5 0 0 1 0 1H2z"/></svg> Save as PR-REVIEW-REPOGRAPH.md</button>
         </div>
         <div class="ai-result-box" id="pr-content"></div>
       </div>
