@@ -15,7 +15,7 @@ export function getWebviewContent(params: WebviewParams): string {
   const { cspSource, iconUris } = params;
 
   // Read the pre-built bundle (created by `npm run build:webview`)
-  const bundlePath = path.join(__dirname, "..", "..", "out", "webview-bundle.html");
+  const bundlePath = path.join(__dirname, "..", "..", "webview-bundle.html");
 
   let template: string;
   try {

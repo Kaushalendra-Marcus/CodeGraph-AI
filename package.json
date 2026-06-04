@@ -55,7 +55,8 @@
         {
           "type": "webview",
           "id": "repograph.mainView",
-          "name": "RepoGraph AI"
+          "name": "RepoGraph AI",
+          "icon": "public/assets/icon.svg"
         }
       ]
     }

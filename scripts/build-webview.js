@@ -8,7 +8,6 @@
  *   src/panel/webview/scripts/graph.js
  *   src/panel/webview/scripts/flow.js
  *   src/panel/webview/scripts/messaging.js
- *   src/panel/webview/scripts/ui.js
  *
  * Output: out/webview-bundle.html
  *
@@ -62,11 +61,10 @@ function build() {
   const tabHistory   = readTab('history.html');
   const tabSettings  = readTab('settings.html');
 
-  // JS scripts (order matters: graph → flow → messaging → ui)
+  // JS scripts (order matters: graph → flow → messaging)
   const jsGraph     = readScript('graph.js');
   const jsFlow      = readScript('flow.js');
   const jsMessaging = readScript('messaging.js');
-  const jsUI        = readScript('ui.js');
 
   const bundle = `<!DOCTYPE html>
 <html lang="en">
@@ -135,11 +133,10 @@ ${tabSettings}
 /* ── Runtime injection ── */
 const ICON_URIS = __ICON_URIS__;
 
-/* ── Scripts (graph → flow → messaging → ui) ── */
+/* ── Scripts (graph → flow → messaging) ── */
 ${jsGraph}
 ${jsFlow}
 ${jsMessaging}
-${jsUI}
 </script>
 </body>
 </html>`;
