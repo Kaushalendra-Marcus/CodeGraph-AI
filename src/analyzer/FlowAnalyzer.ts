@@ -370,7 +370,7 @@ function buildSummary(
   });
 
   const chainLines = chains.slice(0, 40).map((c) =>
-    `${c.file.split("/").slice(-2).join("/")} → ${c.to.split("/").slice(-2).join("/")} via ${c.method}`
+    `${c.from.split("/").slice(-2).join("/")} → ${c.to.split("/").slice(-2).join("/")} via ${c.method}`
   );
 
   const eventLines = events.slice(0, 15).map((e) => {

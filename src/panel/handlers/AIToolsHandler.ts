@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import { DocGenerator } from "../../generators/DocGenerator";
 import { generateCustomFlow } from "../../agents/FlowDiagramAgent";
 import { PanelState } from "./PanelState";
+import { FlowContext } from "../../analyzer/FlowAnalyzer";
 
 export class AIToolsHandler {
   constructor(
@@ -27,6 +28,26 @@ export class AIToolsHandler {
   private addTokens(n: number) {
     this.state.totalTokensUsed += n;
     this.post({ type: "tokenUsage", payload: { total: this.state.totalTokensUsed } });
+  }
+
+  private emptyFlowContext(): FlowContext {
+    return {
+      callChains: [],
+      routes: [],
+      eventFlows: [],
+      dbAccess: [],
+      functions: [],
+      middlewareStack: [],
+      summary: {
+        routeCount: 0,
+        routes: [],
+        callChainLines: [],
+        eventLines: [],
+        dbLines: [],
+        middlewareLines: [],
+        exportedFunctions: [],
+      },
+    };
   }
 
   // ── Doc generation ──────────────────────────────────────────────────────
@@ -148,7 +169,7 @@ export class AIToolsHandler {
         this.state.workspaceInfo ?? { name: "project", rootPath: "", files: [], isLocal: true },
         this.state.currentSummary!,
         this.state.currentFileSummaries ?? [],
-        this.state.currentFlowContext ?? { callChains: [], routes: [], eventEmitters: [], dbAccess: [] }
+        this.state.currentFlowContext ?? this.emptyFlowContext()
       );
       this.post({ type: "customFlowReady", payload: { diagram } });
     } catch (e: unknown) {
